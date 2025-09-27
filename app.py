@@ -31,9 +31,6 @@ import sqlite3
 
 app = Flask(__name__)
 
-# Initialize database on startup
-init_db()
-
 # Initialize database
 def init_db():
     conn = sqlite3.connect('bookvana.db')
@@ -116,6 +113,9 @@ def init_db():
     
     conn.commit()
     conn.close()
+
+# Initialize database on startup
+init_db()
 
 # Book categories
 BOOK_CATEGORIES = [
