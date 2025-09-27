@@ -28,18 +28,41 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from io import BytesIO
 import sqlite3
+import psycopg2
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 
+
+def get_db():
+    """Get database connection based on environment."""
+    if os.environ.get('DATABASE_URL'):
+        # PostgreSQL connection from DATABASE_URL
+        url = urlparse(os.environ['DATABASE_URL'])
+        conn = psycopg2.connect(
+            database=url.path[1:],
+            user=url.username,
+            password=url.password,
+            host=url.hostname,
+            port=url.port
+        )
+        return conn
+    else:
+        # Local SQLite
+        return sqlite3.connect('bookvana.db')
+
 # Initialize database
 def init_db():
-    conn = sqlite3.connect('bookvana.db')
+    conn = get_db()
     cursor = conn.cursor()
-    
+
+    # Determine ID definition based on database
+    id_def = 'SERIAL PRIMARY KEY' if os.environ.get('DATABASE_URL') else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+
     # Books table
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS books (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_def},
             title TEXT NOT NULL,
             author TEXT NOT NULL,
             isbn TEXT UNIQUE,
@@ -50,11 +73,11 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     # Members table
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_def},
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             phone TEXT,
@@ -63,11 +86,11 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     # Transactions table
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_def},
             book_id INTEGER,
             member_id INTEGER,
             transaction_type TEXT NOT NULL,
@@ -80,37 +103,46 @@ def init_db():
             FOREIGN KEY (member_id) REFERENCES members (id)
         )
     ''')
-    
-    # Insert sample data
-    sample_books = [
-        ('The Forest Chronicles', 'Nature Writer', '978-0123456789', 'Fiction', 3, 3, 299.99),
-        ('Digital Forest: AI & Nature', 'Tech Author', '978-0123456790', 'Technology', 2, 2, 599.99),
-        ('Ancient Tree Wisdom', 'Philosophy Sage', '978-0123456791', 'Philosophy', 1, 1, 399.99),
-        ('Butterfly Gardens', 'Garden Expert', '978-0123456792', 'Gardening', 4, 4, 249.99),
-        ('Wildlife Photography', 'Photo Master', '978-0123456793', 'Photography', 2, 2, 799.99),
-        ('Forest Ecosystems', 'Eco Scientist', '978-0123456794', 'Science', 3, 3, 699.99),
-        ('Mystical Forest Tales', 'Fantasy Author', '978-0123456795', 'Fantasy', 5, 5, 349.99),
-        ('Tree Climbing Adventures', 'Adventure Writer', '978-0123456796', 'Adventure', 2, 2, 199.99),
-        ('Medicinal Plants', 'Herbalist', '978-0123456797', 'Health', 3, 3, 449.99),
-        ('Forest Management', 'Forest Officer', '978-0123456798', 'Management', 1, 1, 899.99)
-    ]
-    
-    cursor.executemany('''
-        INSERT OR IGNORE INTO books (title, author, isbn, category, copies_total, copies_available, price)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', sample_books)
-    
-    sample_members = [
-        ('Raj Kumar', 'raj@email.com', '9876543210', 'New Delhi', 'Premium'),
-        ('Priya Sharma', 'priya@email.com', '9876543211', 'Mumbai', 'Regular'),
-        ('Amit Singh', 'amit@email.com', '9876543212', 'Bangalore', 'Regular')
-    ]
-    
-    cursor.executemany('''
-        INSERT OR IGNORE INTO members (name, email, phone, address, membership_type)
-        VALUES (?, ?, ?, ?, ?)
-    ''', sample_members)
-    
+
+    # Insert sample data only if tables are empty
+    cursor.execute('SELECT COUNT(*) FROM books')
+    count = cursor.fetchone()[0]
+    if count == 0:
+        # Sample books
+        books_data = [
+            ('The Great Gatsby', 'F. Scott Fitzgerald', '978-0-7432-7356-5', 'Fiction', 5, 5, 10.99),
+            ('To Kill a Mockingbird', 'Harper Lee', '978-0-06-112008-4', 'Fiction', 3, 3, 8.99),
+            ('1984', 'George Orwell', '978-0-452-28423-4', 'Fiction', 4, 4, 9.99)
+        ]
+        for book in books_data:
+            if os.environ.get('DATABASE_URL'):
+                cursor.execute('''
+                    INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ''', book)
+            else:
+                cursor.execute('''
+                    INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', book)
+
+        # Sample members
+        members_data = [
+            ('John Doe', 'john@example.com', '1234567890', '123 Main St', 'Regular'),
+            ('Jane Smith', 'jane@example.com', '0987654321', '456 Elm St', 'Premium')
+        ]
+        for member in members_data:
+            if os.environ.get('DATABASE_URL'):
+                cursor.execute('''
+                    INSERT INTO members (name, email, phone, address, membership_type)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', member)
+            else:
+                cursor.execute('''
+                    INSERT INTO members (name, email, phone, address, membership_type)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', member)
+
     conn.commit()
     conn.close()
 
@@ -149,9 +181,9 @@ def transactions():
 # API Routes
 @app.route('/api/books', methods=['GET', 'POST'])
 def api_books():
-    conn = sqlite3.connect('bookvana.db')
+    conn = get_db()
     cursor = conn.cursor()
-    
+
     if request.method == 'GET':
         cursor.execute('SELECT * FROM books ORDER BY title')
         books = cursor.fetchall()
@@ -164,21 +196,28 @@ def api_books():
             })
         conn.close()
         return jsonify(book_list)
-    
+
     elif request.method == 'POST':
         data = request.json
-        cursor.execute('''
-            INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (data['title'], data['author'], data['isbn'], data['category'],
-              data['copies_total'], data['copies_available'], data['price']))
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (data['title'], data['author'], data['isbn'], data['category'],
+                  data['copies_total'], data['copies_available'], data['price']))
+        else:
+            cursor.execute('''
+                INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (data['title'], data['author'], data['isbn'], data['category'],
+                  data['copies_total'], data['copies_available'], data['price']))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Book added successfully!'})
 
 @app.route('/api/members', methods=['GET', 'POST'])
 def api_members():
-    conn = sqlite3.connect('bookvana.db')
+    conn = get_db()
     cursor = conn.cursor()
     
     if request.method == 'GET':
@@ -195,10 +234,16 @@ def api_members():
     
     elif request.method == 'POST':
         data = request.json
-        cursor.execute('''
-            INSERT INTO members (name, email, phone, address, membership_type)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (data['name'], data['email'], data['phone'], data['address'], data['membership_type']))
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                INSERT INTO members (name, email, phone, address, membership_type)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (data['name'], data['email'], data['phone'], data['address'], data['membership_type']))
+        else:
+            cursor.execute('''
+                INSERT INTO members (name, email, phone, address, membership_type)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (data['name'], data['email'], data['phone'], data['address'], data['membership_type']))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Member added successfully!'})
@@ -206,11 +251,14 @@ def api_members():
 @app.route('/api/issue-book', methods=['POST'])
 def issue_book():
     data = request.json
-    conn = sqlite3.connect('bookvana.db')
+    conn = get_db()
     cursor = conn.cursor()
     
     # Check if book is available
-    cursor.execute('SELECT copies_available FROM books WHERE id = ?', (data['book_id'],))
+    if os.environ.get('DATABASE_URL'):
+        cursor.execute('SELECT copies_available FROM books WHERE id = %s', (data['book_id'],))
+    else:
+        cursor.execute('SELECT copies_available FROM books WHERE id = ?', (data['book_id'],))
     result = cursor.fetchone()
     
     if result and result[0] > 0:
@@ -218,15 +266,26 @@ def issue_book():
         issue_date = datetime.now()
         due_date = issue_date + timedelta(days=14)  # 14 days loan period
         
-        cursor.execute('''
-            INSERT INTO transactions (book_id, member_id, transaction_type, issue_date, due_date, status)
-            VALUES (?, ?, 'ISSUE', ?, ?, 'Active')
-        ''', (data['book_id'], data['member_id'], issue_date, due_date))
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                INSERT INTO transactions (book_id, member_id, transaction_type, issue_date, due_date, status)
+                VALUES (%s, %s, 'ISSUE', %s, %s, 'Active')
+            ''', (data['book_id'], data['member_id'], issue_date, due_date))
+        else:
+            cursor.execute('''
+                INSERT INTO transactions (book_id, member_id, transaction_type, issue_date, due_date, status)
+                VALUES (?, ?, 'ISSUE', ?, ?, 'Active')
+            ''', (data['book_id'], data['member_id'], issue_date, due_date))
         
         # Update book availability
-        cursor.execute('''
-            UPDATE books SET copies_available = copies_available - 1 WHERE id = ?
-        ''', (data['book_id'],))
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                UPDATE books SET copies_available = copies_available - 1 WHERE id = %s
+            ''', (data['book_id'],))
+        else:
+            cursor.execute('''
+                UPDATE books SET copies_available = copies_available - 1 WHERE id = ?
+            ''', (data['book_id'],))
         
         conn.commit()
         conn.close()
@@ -238,21 +297,31 @@ def issue_book():
 @app.route('/api/return-book', methods=['POST'])
 def return_book():
     data = request.json
-    conn = sqlite3.connect('bookvana.db')
+    conn = get_db()
     cursor = conn.cursor()
     
     # Find active transaction
-    cursor.execute('''
-        SELECT id, due_date FROM transactions 
-        WHERE book_id = ? AND member_id = ? AND status = 'Active'
-        ORDER BY issue_date DESC LIMIT 1
-    ''', (data['book_id'], data['member_id']))
+    if os.environ.get('DATABASE_URL'):
+        cursor.execute('''
+            SELECT id, due_date FROM transactions 
+            WHERE book_id = %s AND member_id = %s AND status = 'Active'
+            ORDER BY issue_date DESC LIMIT 1
+        ''', (data['book_id'], data['member_id']))
+    else:
+        cursor.execute('''
+            SELECT id, due_date FROM transactions 
+            WHERE book_id = ? AND member_id = ? AND status = 'Active'
+            ORDER BY issue_date DESC LIMIT 1
+        ''', (data['book_id'], data['member_id']))
     
     result = cursor.fetchone()
     if result:
         transaction_id, due_date = result
         return_date = datetime.now()
-        due_date = datetime.fromisoformat(due_date.replace('Z', '+00:00')) if isinstance(due_date, str) else due_date
+        if isinstance(due_date, str):
+            due_date = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
+        else:
+            due_date = due_date
         
         # Calculate fine if overdue
         fine_amount = 0.0
@@ -261,15 +330,26 @@ def return_book():
             fine_amount = days_overdue * 5.0  # ₹5 per day fine
         
         # Update transaction
-        cursor.execute('''
-            UPDATE transactions SET return_date = ?, fine_amount = ?, status = 'Returned'
-            WHERE id = ?
-        ''', (return_date, fine_amount, transaction_id))
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                UPDATE transactions SET return_date = %s, fine_amount = %s, status = 'Returned'
+                WHERE id = %s
+            ''', (return_date, fine_amount, transaction_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions SET return_date = ?, fine_amount = ?, status = 'Returned'
+                WHERE id = ?
+            ''', (return_date, fine_amount, transaction_id))
         
         # Update book availability
-        cursor.execute('''
-            UPDATE books SET copies_available = copies_available + 1 WHERE id = ?
-        ''', (data['book_id'],))
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                UPDATE books SET copies_available = copies_available + 1 WHERE id = %s
+            ''', (data['book_id'],))
+        else:
+            cursor.execute('''
+                UPDATE books SET copies_available = copies_available + 1 WHERE id = ?
+            ''', (data['book_id'],))
         
         conn.commit()
         conn.close()
@@ -278,19 +358,70 @@ def return_book():
         conn.close()
         return jsonify({'success': False, 'message': 'No active transaction found!'})
 
+@app.route('/api/transactions', methods=['GET'])
+def api_transactions():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM transactions ORDER BY issue_date DESC')
+    transactions = cursor.fetchall()
+    transaction_list = []
+    for trans in transactions:
+        transaction_list.append({
+            'id': trans[0], 'book_id': trans[1], 'member_id': trans[2],
+            'transaction_type': trans[3], 'issue_date': trans[4],
+            'due_date': trans[5], 'return_date': trans[6],
+            'fine_amount': trans[7], 'status': trans[8]
+        })
+    conn.close()
+    return jsonify(transaction_list)
+
+@app.route('/api/stats', methods=['GET'])
+def api_stats():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Total books
+    cursor.execute('SELECT COUNT(*) FROM books')
+    total_books = cursor.fetchone()[0]
+    
+    # Active members (all members for simplicity)
+    cursor.execute('SELECT COUNT(*) FROM members')
+    total_members = cursor.fetchone()[0]
+    
+    # Books issued (active transactions)
+    cursor.execute('SELECT COUNT(*) FROM transactions WHERE status = "Active"')
+    books_issued = cursor.fetchone()[0]
+    
+    conn.close()
+    return jsonify({
+        'totalBooks': total_books,
+        'activeMembers': total_members,
+        'booksIssued': books_issued
+    })
+
 @app.route('/api/download-bill/<int:transaction_id>')
 def download_bill(transaction_id):
-    conn = sqlite3.connect('bookvana.db')
+    conn = get_db()
     cursor = conn.cursor()
     
     # Get transaction details
-    cursor.execute('''
-        SELECT t.*, b.title, b.author, b.price, m.name, m.email, m.phone
-        FROM transactions t
-        JOIN books b ON t.book_id = b.id
-        JOIN members m ON t.member_id = m.id
-        WHERE t.id = ?
-    ''', (transaction_id,))
+    if os.environ.get('DATABASE_URL'):
+        cursor.execute('''
+            SELECT t.*, b.title, b.author, b.price, m.name, m.email, m.phone
+            FROM transactions t
+            JOIN books b ON t.book_id = b.id
+            JOIN members m ON t.member_id = m.id
+            WHERE t.id = %s
+        ''', (transaction_id,))
+    else:
+        cursor.execute('''
+            SELECT t.*, b.title, b.author, b.price, m.name, m.email, m.phone
+            FROM transactions t
+            JOIN books b ON t.book_id = b.id
+            JOIN members m ON t.member_id = m.id
+            WHERE t.id = ?
+        ''', (transaction_id,))
     
     result = cursor.fetchone()
     conn.close()
@@ -330,4 +461,6 @@ def download_bill(transaction_id):
     return jsonify({'error': 'Transaction not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug)

@@ -4,7 +4,7 @@ services:
     name: bookvana-library
     runtime: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT"
     plan: free
     autoDeploy: false
     healthCheckPath: /
@@ -15,5 +15,3 @@ services:
         value: "false"
       - key: PYTHONPATH
         value: "."
-      - key: PORT
-        value: "10000"
