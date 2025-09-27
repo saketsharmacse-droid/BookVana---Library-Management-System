@@ -53,98 +53,101 @@ def get_db():
 
 # Initialize database
 def init_db():
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    # Determine ID definition based on database
-    id_def = 'SERIAL PRIMARY KEY' if os.environ.get('DATABASE_URL') else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+        # Determine ID definition based on database
+        id_def = 'SERIAL PRIMARY KEY' if os.environ.get('DATABASE_URL') else 'INTEGER PRIMARY KEY AUTOINCREMENT'
 
-    # Books table
-    cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS books (
-            id {id_def},
-            title TEXT NOT NULL,
-            author TEXT NOT NULL,
-            isbn TEXT UNIQUE,
-            category TEXT NOT NULL,
-            copies_total INTEGER DEFAULT 1,
-            copies_available INTEGER DEFAULT 1,
-            price REAL DEFAULT 0.0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+        # Books table
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS books (
+                id {id_def},
+                title TEXT NOT NULL,
+                author TEXT NOT NULL,
+                isbn TEXT UNIQUE,
+                category TEXT NOT NULL,
+                copies_total INTEGER DEFAULT 1,
+                copies_available INTEGER DEFAULT 1,
+                price REAL DEFAULT 0.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-    # Members table
-    cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS members (
-            id {id_def},
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            phone TEXT,
-            address TEXT,
-            membership_type TEXT DEFAULT 'Regular',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+        # Members table
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS members (
+                id {id_def},
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                address TEXT,
+                membership_type TEXT DEFAULT 'Regular',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-    # Transactions table
-    cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS transactions (
-            id {id_def},
-            book_id INTEGER,
-            member_id INTEGER,
-            transaction_type TEXT NOT NULL,
-            issue_date TIMESTAMP,
-            due_date TIMESTAMP,
-            return_date TIMESTAMP,
-            fine_amount REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Active',
-            FOREIGN KEY (book_id) REFERENCES books (id),
-            FOREIGN KEY (member_id) REFERENCES members (id)
-        )
-    ''')
+        # Transactions table
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS transactions (
+                id {id_def},
+                book_id INTEGER,
+                member_id INTEGER,
+                transaction_type TEXT NOT NULL,
+                issue_date TIMESTAMP,
+                due_date TIMESTAMP,
+                return_date TIMESTAMP,
+                fine_amount REAL DEFAULT 0.0,
+                status TEXT DEFAULT 'Active',
+                FOREIGN KEY (book_id) REFERENCES books (id),
+                FOREIGN KEY (member_id) REFERENCES members (id)
+            )
+        ''')
 
-    # Insert sample data only if tables are empty
-    cursor.execute('SELECT COUNT(*) FROM books')
-    count = cursor.fetchone()[0]
-    if count == 0:
-        # Sample books
-        books_data = [
-            ('The Great Gatsby', 'F. Scott Fitzgerald', '978-0-7432-7356-5', 'Fiction', 5, 5, 10.99),
-            ('To Kill a Mockingbird', 'Harper Lee', '978-0-06-112008-4', 'Fiction', 3, 3, 8.99),
-            ('1984', 'George Orwell', '978-0-452-28423-4', 'Fiction', 4, 4, 9.99)
-        ]
-        for book in books_data:
-            if os.environ.get('DATABASE_URL'):
-                cursor.execute('''
-                    INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ''', book)
-            else:
-                cursor.execute('''
-                    INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', book)
+        # Insert sample data only if tables are empty
+        cursor.execute('SELECT COUNT(*) FROM books')
+        count = cursor.fetchone()[0]
+        if count == 0:
+            # Sample books
+            books_data = [
+                ('The Great Gatsby', 'F. Scott Fitzgerald', '978-0-7432-7356-5', 'Fiction', 5, 5, 10.99),
+                ('To Kill a Mockingbird', 'Harper Lee', '978-0-06-112008-4', 'Fiction', 3, 3, 8.99),
+                ('1984', 'George Orwell', '978-0-452-28423-4', 'Fiction', 4, 4, 9.99)
+            ]
+            for book in books_data:
+                if os.environ.get('DATABASE_URL'):
+                    cursor.execute('''
+                        INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ''', book)
+                else:
+                    cursor.execute('''
+                        INSERT INTO books (title, author, isbn, category, copies_total, copies_available, price)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', book)
 
-        # Sample members
-        members_data = [
-            ('John Doe', 'john@example.com', '1234567890', '123 Main St', 'Regular'),
-            ('Jane Smith', 'jane@example.com', '0987654321', '456 Elm St', 'Premium')
-        ]
-        for member in members_data:
-            if os.environ.get('DATABASE_URL'):
-                cursor.execute('''
-                    INSERT INTO members (name, email, phone, address, membership_type)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', member)
-            else:
-                cursor.execute('''
-                    INSERT INTO members (name, email, phone, address, membership_type)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', member)
+            # Sample members
+            members_data = [
+                ('John Doe', 'john@example.com', '1234567890', '123 Main St', 'Regular'),
+                ('Jane Smith', 'jane@example.com', '0987654321', '456 Elm St', 'Premium')
+            ]
+            for member in members_data:
+                if os.environ.get('DATABASE_URL'):
+                    cursor.execute('''
+                        INSERT INTO members (name, email, phone, address, membership_type)
+                        VALUES (%s, %s, %s, %s, %s)
+                    ''', member)
+                else:
+                    cursor.execute('''
+                        INSERT INTO members (name, email, phone, address, membership_type)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', member)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Database initialization failed: {e}")
 
 # Initialize database on startup
 init_db()
