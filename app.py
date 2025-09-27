@@ -31,6 +31,9 @@ import sqlite3
 
 app = Flask(__name__)
 
+# Initialize database on startup
+init_db()
+
 # Initialize database
 def init_db():
     conn = sqlite3.connect('bookvana.db')
@@ -327,5 +330,4 @@ def download_bill(transaction_id):
     return jsonify({'error': 'Transaction not found'}), 404
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
