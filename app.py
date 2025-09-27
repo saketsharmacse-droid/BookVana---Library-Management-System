@@ -28,7 +28,6 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from io import BytesIO
 import sqlite3
-import psycopg2
 from urllib.parse import urlparse
 
 app = Flask(__name__)
@@ -38,6 +37,7 @@ def get_db():
     """Get database connection based on environment."""
     if os.environ.get('DATABASE_URL'):
         # PostgreSQL connection from DATABASE_URL
+        import psycopg2
         url = urlparse(os.environ['DATABASE_URL'])
         conn = psycopg2.connect(
             database=url.path[1:],
