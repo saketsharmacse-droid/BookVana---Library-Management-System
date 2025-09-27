@@ -1,0 +1,19 @@
+services:
+  # BookVana Library Management System - Main Web Service
+  - type: web
+    name: bookvana-library
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
+    plan: free
+    autoDeploy: false
+    healthCheckPath: /
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: PYTHONPATH
+        value: "."
+      - key: PORT
+        value: "10000"

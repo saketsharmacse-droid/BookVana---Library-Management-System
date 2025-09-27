@@ -1,0 +1,859 @@
+{% extends "base.html" %}
+
+{% block title %}BookVana - Books Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📚 Books Management</h1>
+    <p class="page-subtitle">Manage your forest of knowledge</p>
+</div>
+
+<div class="management-controls">
+    <div class="search-filter-container">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="bookSearch" placeholder="Search books by title, author, or ISBN...">
+        </div>
+        <div class="filter-select">
+            <select id="categoryFilter">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-select">
+            <select id="availabilityFilter">
+                <option value="">All Books</option>
+                <option value="available">Available</option>
+                <option value="issued">Issued</option>
+            </select>
+        </div>
+        <button class="btn-primary" onclick="showAddBookModal()">
+            <i class="fas fa-plus"></i> Add Book
+        </button>
+        <button class="btn-secondary" onclick="exportBooks()">
+            <i class="fas fa-download"></i> Export
+        </button>
+    </div>
+</div>
+
+<div class="books-stats">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📖</div>
+            <div class="stat-number" id="totalBooksCount">0</div>
+            <div class="stat-label">Total Books</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-number" id="availableBooksCount">0</div>
+            <div class="stat-label">Available</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📤</div>
+            <div class="stat-number" id="issuedBooksCount">0</div>
+            <div class="stat-label">Issued</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-number" id="totalValue">₹0</div>
+            <div class="stat-label">Total Value</div>
+        </div>
+    </div>
+</div>
+
+<div class="books-table-container">
+    <table class="data-table" id="booksTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>ISBN</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Total Copies</th>
+                <th>Available</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="booksTableBody">
+            <tr>
+                <td colspan="10" class="loading-cell">
+                    <div class="loading-spinner"></div>
+                    Loading books...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Book Modal -->
+<div id="addBookModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🌿 Add New Book</h2>
+            <span class="close" onclick="closeModal('addBookModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="addBookForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookTitle">Book Title *</label>
+                        <input type="text" id="bookTitle" name="title" required 
+                               placeholder="Enter book title">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookAuthor">Author *</label>
+                        <input type="text" id="bookAuthor" name="author" required 
+                               placeholder="Enter author name">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookISBN">ISBN</label>
+                        <input type="text" id="bookISBN" name="isbn" 
+                               placeholder="978-0-123456-78-9">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookCategory">Category *</label>
+                        <select id="bookCategory" name="category" required>
+                            <option value="">Select category</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookPrice">Price (₹) *</label>
+                        <input type="number" id="bookPrice" name="price" required 
+                               min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookCopies">Number of Copies *</label>
+                        <input type="number" id="bookCopies" name="copies_total" required 
+                               min="1" value="1">
+                    </div>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Add Book
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('addBookModal')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Book Modal -->
+<div id="editBookModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🌿 Edit Book</h2>
+            <span class="close" onclick="closeModal('editBookModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="editBookForm">
+                <input type="hidden" id="editBookId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editBookTitle">Book Title *</label>
+                        <input type="text" id="editBookTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editBookAuthor">Author *</label>
+                        <input type="text" id="editBookAuthor" name="author" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editBookISBN">ISBN</label>
+                        <input type="text" id="editBookISBN" name="isbn">
+                    </div>
+                    <div class="form-group">
+                        <label for="editBookCategory">Category *</label>
+                        <select id="editBookCategory" name="category" required>
+                            {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editBookPrice">Price (₹) *</label>
+                        <input type="number" id="editBookPrice" name="price" required 
+                               min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="editBookCopies">Total Copies *</label>
+                        <input type="number" id="editBookCopies" name="copies_total" required min="1">
+                    </div>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('editBookModal')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Book Details Modal -->
+<div id="bookDetailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📖 Book Details</h2>
+            <span class="close" onclick="closeModal('bookDetailsModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="bookDetailsContent">
+                <!-- Book details will be populated here -->
+            </div>
+            <div class="form-buttons">
+                <button class="btn-primary" onclick="issueBookFromDetails()">
+                    <i class="fas fa-hand-point-right"></i> Issue Book
+                </button>
+                <button class="btn-secondary" onclick="closeModal('bookDetailsModal')">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let booksData = [];
+let currentBookId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadBooks();
+    initBookManagement();
+});
+
+async function loadBooks() {
+    try {
+        const books = await loadData('/api/books');
+        booksData = books;
+        displayBooks(books);
+        updateBookStats(books);
+    } catch (error) {
+        showNotification('Error loading books!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function displayBooks(books) {
+    const tableBody = document.getElementById('booksTableBody');
+    
+    if (!books.length) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state">
+                    <div class="empty-icon">📚</div>
+                    <p>No books found. Add your first book to get started!</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tableBody.innerHTML = books.map(book => `
+        <tr class="book-row" data-book-id="${book.id}">
+            <td>${book.id}</td>
+            <td class="book-title">${book.title}</td>
+            <td>${book.author}</td>
+            <td>${book.isbn || 'N/A'}</td>
+            <td><span class="category-badge">${book.category}</span></td>
+            <td class="price">₹${book.price}</td>
+            <td>${book.copies_total}</td>
+            <td class="available-count">${book.copies_available}</td>
+            <td>
+                <span class="status-badge ${book.copies_available > 0 ? 'available' : 'unavailable'}">
+                    ${book.copies_available > 0 ? 'Available' : 'Out of Stock'}
+                </span>
+            </td>
+            <td class="actions">
+                <button class="btn-icon" onclick="viewBookDetails(${book.id})" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-icon" onclick="editBook(${book.id})" title="Edit Book">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon delete" onclick="deleteBook(${book.id})" title="Delete Book">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ${book.copies_available > 0 ? 
+                    `<button class="btn-icon issue" onclick="quickIssueBook(${book.id})" title="Issue Book">
+                        <i class="fas fa-hand-point-right"></i>
+                    </button>` : ''
+                }
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateBookStats(books) {
+    const totalBooks = books.length;
+    const availableBooks = books.filter(book => book.copies_available > 0).length;
+    const issuedCount = books.reduce((sum, book) => sum + (book.copies_total - book.copies_available), 0);
+    const totalValue = books.reduce((sum, book) => sum + (book.price * book.copies_total), 0);
+    
+    document.getElementById('totalBooksCount').textContent = totalBooks;
+    document.getElementById('availableBooksCount').textContent = availableBooks;
+    document.getElementById('issuedBooksCount').textContent = issuedCount;
+    document.getElementById('totalValue').textContent = formatCurrency(totalValue);
+}
+
+function initBookManagement() {
+    // Initialize search
+    const searchInput = document.getElementById('bookSearch');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const filteredBooks = booksData.filter(book => 
+            book.title.toLowerCase().includes(searchTerm) ||
+            book.author.toLowerCase().includes(searchTerm) ||
+            (book.isbn && book.isbn.toLowerCase().includes(searchTerm))
+        );
+        displayBooks(filteredBooks);
+    });
+    
+    // Initialize category filter
+    const categoryFilter = document.getElementById('categoryFilter');
+    categoryFilter.addEventListener('change', function() {
+        const category = this.value;
+        const filteredBooks = category ? 
+            booksData.filter(book => book.category === category) : 
+            booksData;
+        displayBooks(filteredBooks);
+        playSound('click');
+    });
+    
+    // Initialize availability filter
+    const availabilityFilter = document.getElementById('availabilityFilter');
+    availabilityFilter.addEventListener('change', function() {
+        const availability = this.value;
+        let filteredBooks = booksData;
+        
+        if (availability === 'available') {
+            filteredBooks = booksData.filter(book => book.copies_available > 0);
+        } else if (availability === 'issued') {
+            filteredBooks = booksData.filter(book => book.copies_available < book.copies_total);
+        }
+        
+        displayBooks(filteredBooks);
+        playSound('click');
+    });
+    
+    // Form handlers
+    document.getElementById('addBookForm').addEventListener('submit', handleAddBook);
+    document.getElementById('editBookForm').addEventListener('submit', handleEditBook);
+}
+
+function showAddBookModal() {
+    playSound('click');
+    document.getElementById('addBookModal').style.display = 'block';
+    document.getElementById('bookTitle').focus();
+}
+
+async function handleAddBook(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const bookData = {
+        title: formData.get('title'),
+        author: formData.get('author'),
+        isbn: formData.get('isbn'),
+        category: formData.get('category'),
+        price: parseFloat(formData.get('price')),
+        copies_total: parseInt(formData.get('copies_total')),
+        copies_available: parseInt(formData.get('copies_total'))
+    };
+    
+    // Validation
+    if (!bookData.title || !bookData.author || !bookData.category) {
+        playSound('error');
+        showNotification('Please fill in all required fields!', 'error');
+        return;
+    }
+    
+    if (bookData.isbn && !validateISBN(bookData.isbn)) {
+        playSound('error');
+        showNotification('Please enter a valid ISBN!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await saveData('/api/books', bookData);
+        
+        if (result.success) {
+            playSound('success');
+            showNotification('Book added successfully!', 'success');
+            closeModal('addBookModal');
+            e.target.reset();
+            loadBooks(); // Reload books
+        } else {
+            playSound('error');
+            showNotification(result.message || 'Error adding book!', 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error adding book!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function editBook(bookId) {
+    playSound('click');
+    const book = booksData.find(b => b.id === bookId);
+    if (!book) return;
+    
+    // Populate edit form
+    document.getElementById('editBookId').value = book.id;
+    document.getElementById('editBookTitle').value = book.title;
+    document.getElementById('editBookAuthor').value = book.author;
+    document.getElementById('editBookISBN').value = book.isbn || '';
+    document.getElementById('editBookCategory').value = book.category;
+    document.getElementById('editBookPrice').value = book.price;
+    document.getElementById('editBookCopies').value = book.copies_total;
+    
+    document.getElementById('editBookModal').style.display = 'block';
+}
+
+async function handleEditBook(e) {
+    e.preventDefault();
+    
+    const bookId = document.getElementById('editBookId').value;
+    const formData = new FormData(e.target);
+    const bookData = {
+        id: bookId,
+        title: formData.get('title'),
+        author: formData.get('author'),
+        isbn: formData.get('isbn'),
+        category: formData.get('category'),
+        price: parseFloat(formData.get('price')),
+        copies_total: parseInt(formData.get('copies_total'))
+    };
+    
+    try {
+        const result = await saveData(`/api/books/${bookId}`, bookData, 'PUT');
+        
+        if (result.success) {
+            playSound('success');
+            showNotification('Book updated successfully!', 'success');
+            closeModal('editBookModal');
+            loadBooks();
+        } else {
+            playSound('error');
+            showNotification(result.message || 'Error updating book!', 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error updating book!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function deleteBook(bookId) {
+    const book = booksData.find(b => b.id === bookId);
+    if (!book) return;
+    
+    if (!confirm(`Are you sure you want to delete "${book.title}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const result = await saveData(`/api/books/${bookId}`, {}, 'DELETE');
+        
+        if (result.success) {
+            playSound('success');
+            showNotification('Book deleted successfully!', 'success');
+            loadBooks();
+        } else {
+            playSound('error');
+            showNotification(result.message || 'Error deleting book!', 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Cannot delete book. It may have active transactions.', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function viewBookDetails(bookId) {
+    playSound('click');
+    const book = booksData.find(b => b.id === bookId);
+    if (!book) return;
+    
+    currentBookId = bookId;
+    const issuedCopies = book.copies_total - book.copies_available;
+    
+    document.getElementById('bookDetailsContent').innerHTML = `
+        <div class="book-details">
+            <div class="detail-row">
+                <div class="detail-label">📖 Title:</div>
+                <div class="detail-value">${book.title}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">✍️ Author:</div>
+                <div class="detail-value">${book.author}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📋 ISBN:</div>
+                <div class="detail-value">${book.isbn || 'Not specified'}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">🏷️ Category:</div>
+                <div class="detail-value"><span class="category-badge">${book.category}</span></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">💰 Price:</div>
+                <div class="detail-value">${formatCurrency(book.price)}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📚 Total Copies:</div>
+                <div class="detail-value">${book.copies_total}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">✅ Available:</div>
+                <div class="detail-value">${book.copies_available}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📤 Issued:</div>
+                <div class="detail-value">${issuedCopies}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📊 Status:</div>
+                <div class="detail-value">
+                    <span class="status-badge ${book.copies_available > 0 ? 'available' : 'unavailable'}">
+                        ${book.copies_available > 0 ? 'Available' : 'Out of Stock'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('bookDetailsModal').style.display = 'block';
+}
+
+async function quickIssueBook(bookId) {
+    playSound('click');
+    
+    // Load members for selection
+    try {
+        const members = await loadData('/api/members');
+        if (!members.length) {
+            showNotification('No members found. Please add members first.', 'error');
+            return;
+        }
+        
+        const memberOptions = members.map(member => 
+            `<option value="${member.id}">${member.name}</option>`
+        ).join('');
+        
+        const memberSelect = `
+            <select id="quickIssueMemberId" required>
+                <option value="">Select a member...</option>
+                ${memberOptions}
+            </select>
+        `;
+        
+        const book = booksData.find(b => b.id === bookId);
+        const confirmed = confirm(`Issue "${book.title}" to which member?`);
+        
+        if (confirmed) {
+            // For simplicity, we'll use a prompt. In a real app, you'd use a proper modal
+            const memberId = prompt('Enter Member ID:');
+            if (memberId) {
+                await issueBookToMember(bookId, memberId);
+            }
+        }
+    } catch (error) {
+        showNotification('Error loading members!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function issueBookToMember(bookId, memberId) {
+    try {
+        const response = await fetch('/api/issue-book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                book_id: bookId,
+                member_id: memberId
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            playSound('success');
+            showNotification(result.message, 'success');
+            loadBooks(); // Reload to update availability
+        } else {
+            playSound('error');
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error issuing book!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function issueBookFromDetails() {
+    if (currentBookId) {
+        quickIssueBook(currentBookId);
+        closeModal('bookDetailsModal');
+    }
+}
+
+function exportBooks() {
+    playSound('click');
+    
+    if (!booksData.length) {
+        showNotification('No books to export!', 'error');
+        return;
+    }
+    
+    const exportData = booksData.map(book => ({
+        ID: book.id,
+        Title: book.title,
+        Author: book.author,
+        ISBN: book.isbn || '',
+        Category: book.category,
+        Price: book.price,
+        'Total Copies': book.copies_total,
+        'Available Copies': book.copies_available,
+        'Issued Copies': book.copies_total - book.copies_available,
+        Status: book.copies_available > 0 ? 'Available' : 'Out of Stock'
+    }));
+    
+    exportToCSV(exportData, 'bookvana_books_' + new Date().toISOString().split('T')[0]);
+}
+</script>
+
+<style>
+/* Additional styles for books page */
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.page-title {
+    font-size: 3rem;
+    color: var(--forest-green);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.page-subtitle {
+    font-size: 1.2rem;
+    color: var(--leaf-green);
+}
+
+.management-controls {
+    margin-bottom: 2rem;
+}
+
+.books-stats {
+    margin-bottom: 3rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.books-table-container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(139, 195, 74, 0.3);
+}
+
+.book-row:hover {
+    background: rgba(139, 195, 74, 0.1) !important;
+}
+
+.book-title {
+    font-weight: 600;
+    color: var(--forest-green);
+}
+
+.category-badge {
+    background: var(--gradient-forest);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-badge.available {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+}
+
+.status-badge.unavailable {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    margin: 0 0.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--leaf-green);
+}
+
+.btn-icon:hover {
+    background: var(--light-green);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-icon.delete {
+    color: #f44336;
+}
+
+.btn-icon.delete:hover {
+    background: #f44336;
+    color: white;
+}
+
+.btn-icon.issue {
+    color: var(--forest-green);
+}
+
+.btn-icon.issue:hover {
+    background: var(--forest-green);
+    color: white;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 2px solid rgba(139, 195, 74, 0.3);
+}
+
+.book-details {
+    background: rgba(139, 195, 74, 0.05);
+    padding: 1.5rem;
+    border-radius: 15px;
+    border: 1px solid rgba(139, 195, 74, 0.2);
+}
+
+.detail-row {
+    display: flex;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(139, 195, 74, 0.1);
+}
+
+.detail-label {
+    font-weight: 600;
+    color: var(--forest-green);
+    min-width: 120px;
+}
+
+.detail-value {
+    flex: 1;
+    color: var(--leaf-green);
+}
+
+.loading-cell {
+    text-align: center;
+    padding: 3rem;
+    color: var(--leaf-green);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--leaf-green);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.price {
+    font-weight: 600;
+    color: var(--forest-green);
+}
+
+.available-count {
+    font-weight: 600;
+    color: var(--light-green);
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .books-table-container {
+        padding: 1rem;
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        min-width: 800px;
+    }
+}
+</style>
+{% endblock %}

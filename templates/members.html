@@ -1,0 +1,605 @@
+{% extends "base.html" %}
+
+{% block title %}BookVana - Members Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">👥 Members Management</h1>
+    <p class="page-subtitle">Manage your library community</p>
+</div>
+
+<div class="management-controls">
+    <div class="search-filter-container">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="memberSearch" placeholder="Search members by name, email, or phone...">
+        </div>
+        <div class="filter-select">
+            <select id="membershipFilter">
+                <option value="">All Memberships</option>
+                <option value="Regular">Regular</option>
+                <option value="Premium">Premium</option>
+                <option value="Student">Student</option>
+            </select>
+        </div>
+        <button class="btn-primary" onclick="showAddMemberModal()">
+            <i class="fas fa-user-plus"></i> Add Member
+        </button>
+        <button class="btn-secondary" onclick="exportMembers()">
+            <i class="fas fa-download"></i> Export
+        </button>
+    </div>
+</div>
+
+<div class="members-stats">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-number" id="totalMembersCount">0</div>
+            <div class="stat-label">Total Members</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-number" id="premiumMembersCount">0</div>
+            <div class="stat-label">Premium Members</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🎓</div>
+            <div class="stat-number" id="studentMembersCount">0</div>
+            <div class="stat-label">Student Members</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-number" id="activeBorrowersCount">0</div>
+            <div class="stat-label">Active Borrowers</div>
+        </div>
+    </div>
+</div>
+
+<div class="members-table-container">
+    <table class="data-table" id="membersTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Membership</th>
+                <th>Member Since</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="membersTableBody">
+            <tr>
+                <td colspan="9" class="loading-cell">
+                    <div class="loading-spinner"></div>
+                    Loading members...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Member Modal -->
+<div id="addMemberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🌿 Add New Member</h2>
+            <span class="close" onclick="closeModal('addMemberModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="addMemberForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="memberName">Full Name *</label>
+                        <input type="text" id="memberName" name="name" required 
+                               placeholder="Enter full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="memberEmail">Email *</label>
+                        <input type="email" id="memberEmail" name="email" required 
+                               placeholder="Enter email address">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="memberPhone">Phone Number</label>
+                        <input type="tel" id="memberPhone" name="phone" 
+                               placeholder="Enter phone number">
+                    </div>
+                    <div class="form-group">
+                        <label for="membershipType">Membership Type *</label>
+                        <select id="membershipType" name="membership_type" required>
+                            <option value="Regular">Regular</option>
+                            <option value="Premium">Premium</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="memberAddress">Address</label>
+                    <textarea id="memberAddress" name="address" rows="3" 
+                              placeholder="Enter address"></textarea>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-user-plus"></i> Add Member
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('addMemberModal')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Member Modal -->
+<div id="editMemberModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🌿 Edit Member</h2>
+            <span class="close" onclick="closeModal('editMemberModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="editMemberForm">
+                <input type="hidden" id="editMemberId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editMemberName">Full Name *</label>
+                        <input type="text" id="editMemberName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editMemberEmail">Email *</label>
+                        <input type="email" id="editMemberEmail" name="email" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editMemberPhone">Phone Number</label>
+                        <input type="tel" id="editMemberPhone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="editMembershipType">Membership Type *</label>
+                        <select id="editMembershipType" name="membership_type" required>
+                            <option value="Regular">Regular</option>
+                            <option value="Premium">Premium</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editMemberAddress">Address</label>
+                    <textarea id="editMemberAddress" name="address" rows="3"></textarea>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('editMemberModal')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Member Details Modal -->
+<div id="memberDetailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>👤 Member Details</h2>
+            <span class="close" onclick="closeModal('memberDetailsModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="memberDetailsContent">
+                <!-- Member details will be populated here -->
+            </div>
+            <div class="form-buttons">
+                <button class="btn-primary" onclick="issueBookToCurrentMember()">
+                    <i class="fas fa-book"></i> Issue Book
+                </button>
+                <button class="btn-secondary" onclick="closeModal('memberDetailsModal')">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let membersData = [];
+let currentMemberId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadMembers();
+    initMemberManagement();
+});
+
+async function loadMembers() {
+    try {
+        const members = await loadData('/api/members');
+        membersData = members;
+        displayMembers(members);
+        updateMemberStats(members);
+    } catch (error) {
+        showNotification('Error loading members!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function displayMembers(members) {
+    const tableBody = document.getElementById('membersTableBody');
+    
+    if (!members.length) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <p>No members found. Add your first member to get started!</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tableBody.innerHTML = members.map(member => `
+        <tr class="member-row" data-member-id="${member.id}">
+            <td>${member.id}</td>
+            <td class="member-name">${member.name}</td>
+            <td>${member.email}</td>
+            <td>${member.phone || 'N/A'}</td>
+            <td class="address-cell">${member.address ? member.address.substring(0, 30) + '...' : 'N/A'}</td>
+            <td><span class="membership-badge ${member.membership_type.toLowerCase()}">${member.membership_type}</span></td>
+            <td>${formatDate(member.created_at)}</td>
+            <td><span class="status-badge active">Active</span></td>
+            <td class="actions">
+                <button class="btn-icon" onclick="viewMemberDetails(${member.id})" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-icon" onclick="editMember(${member.id})" title="Edit Member">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon delete" onclick="deleteMember(${member.id})" title="Delete Member">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="btn-icon issue" onclick="quickIssueTo(${member.id})" title="Issue Book">
+                    <i class="fas fa-book-open"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateMemberStats(members) {
+    const totalMembers = members.length;
+    const premiumMembers = members.filter(member => member.membership_type === 'Premium').length;
+    const studentMembers = members.filter(member => member.membership_type === 'Student').length;
+    const activeBorrowers = 0; // This would need to be calculated from transactions
+    
+    document.getElementById('totalMembersCount').textContent = totalMembers;
+    document.getElementById('premiumMembersCount').textContent = premiumMembers;
+    document.getElementById('studentMembersCount').textContent = studentMembers;
+    document.getElementById('activeBorrowersCount').textContent = activeBorrowers;
+}
+
+function initMemberManagement() {
+    // Initialize search
+    const searchInput = document.getElementById('memberSearch');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const filteredMembers = membersData.filter(member => 
+            member.name.toLowerCase().includes(searchTerm) ||
+            member.email.toLowerCase().includes(searchTerm) ||
+            (member.phone && member.phone.includes(searchTerm))
+        );
+        displayMembers(filteredMembers);
+    });
+    
+    // Initialize membership filter
+    const membershipFilter = document.getElementById('membershipFilter');
+    membershipFilter.addEventListener('change', function() {
+        const membershipType = this.value;
+        const filteredMembers = membershipType ? 
+            membersData.filter(member => member.membership_type === membershipType) : 
+            membersData;
+        displayMembers(filteredMembers);
+        playSound('click');
+    });
+    
+    // Form handlers
+    document.getElementById('addMemberForm').addEventListener('submit', handleAddMember);
+    document.getElementById('editMemberForm').addEventListener('submit', handleEditMember);
+}
+
+function showAddMemberModal() {
+    playSound('click');
+    document.getElementById('addMemberModal').style.display = 'block';
+    document.getElementById('memberName').focus();
+}
+
+async function handleAddMember(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const memberData = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        address: formData.get('address'),
+        membership_type: formData.get('membership_type')
+    };
+    
+    // Validation
+    if (!memberData.name || !memberData.email) {
+        playSound('error');
+        showNotification('Please fill in all required fields!', 'error');
+        return;
+    }
+    
+    if (!validateEmail(memberData.email)) {
+        playSound('error');
+        showNotification('Please enter a valid email address!', 'error');
+        return;
+    }
+    
+    if (memberData.phone && !validatePhone(memberData.phone)) {
+        playSound('error');
+        showNotification('Please enter a valid phone number!', 'error');
+        return;
+    }
+    
+    try {
+        const result = await saveData('/api/members', memberData);
+        
+        if (result.success) {
+            playSound('success');
+            showNotification('Member added successfully!', 'success');
+            closeModal('addMemberModal');
+            e.target.reset();
+            loadMembers();
+        } else {
+            playSound('error');
+            showNotification(result.message || 'Error adding member!', 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error adding member!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function editMember(memberId) {
+    playSound('click');
+    const member = membersData.find(m => m.id === memberId);
+    if (!member) return;
+    
+    // Populate edit form
+    document.getElementById('editMemberId').value = member.id;
+    document.getElementById('editMemberName').value = member.name;
+    document.getElementById('editMemberEmail').value = member.email;
+    document.getElementById('editMemberPhone').value = member.phone || '';
+    document.getElementById('editMemberAddress').value = member.address || '';
+    document.getElementById('editMembershipType').value = member.membership_type;
+    
+    document.getElementById('editMemberModal').style.display = 'block';
+}
+
+async function handleEditMember(e) {
+    e.preventDefault();
+    
+    const memberId = document.getElementById('editMemberId').value;
+    const formData = new FormData(e.target);
+    const memberData = {
+        id: memberId,
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        address: formData.get('address'),
+        membership_type: formData.get('membership_type')
+    };
+    
+    try {
+        const result = await saveData(`/api/members/${memberId}`, memberData, 'PUT');
+        
+        if (result.success) {
+            playSound('success');
+            showNotification('Member updated successfully!', 'success');
+            closeModal('editMemberModal');
+            loadMembers();
+        } else {
+            playSound('error');
+            showNotification(result.message || 'Error updating member!', 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error updating member!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function deleteMember(memberId) {
+    const member = membersData.find(m => m.id === memberId);
+    if (!member) return;
+    
+    if (!confirm(`Are you sure you want to delete "${member.name}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const result = await saveData(`/api/members/${memberId}`, {}, 'DELETE');
+        
+        if (result.success) {
+            playSound('success');
+            showNotification('Member deleted successfully!', 'success');
+            loadMembers();
+        } else {
+            playSound('error');
+            showNotification(result.message || 'Error deleting member!', 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Cannot delete member. They may have active transactions.', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function viewMemberDetails(memberId) {
+    playSound('click');
+    const member = membersData.find(m => m.id === memberId);
+    if (!member) return;
+    
+    currentMemberId = memberId;
+    
+    document.getElementById('memberDetailsContent').innerHTML = `
+        <div class="member-details">
+            <div class="detail-row">
+                <div class="detail-label">👤 Name:</div>
+                <div class="detail-value">${member.name}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📧 Email:</div>
+                <div class="detail-value">${member.email}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📱 Phone:</div>
+                <div class="detail-value">${member.phone || 'Not provided'}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">🏠 Address:</div>
+                <div class="detail-value">${member.address || 'Not provided'}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">🎫 Membership:</div>
+                <div class="detail-value">
+                    <span class="membership-badge ${member.membership_type.toLowerCase()}">
+                        ${member.membership_type}
+                    </span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📅 Member Since:</div>
+                <div class="detail-value">${formatDate(member.created_at)}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">📊 Status:</div>
+                <div class="detail-value">
+                    <span class="status-badge active">Active</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('memberDetailsModal').style.display = 'block';
+}
+
+async function quickIssueTo(memberId) {
+    playSound('click');
+    
+    try {
+        const books = await loadData('/api/books');
+        const availableBooks = books.filter(book => book.copies_available > 0);
+        
+        if (!availableBooks.length) {
+            showNotification('No books available for issue!', 'error');
+            return;
+        }
+        
+        // For simplicity, using prompt. In a real app, you'd use a proper modal
+        const bookId = prompt('Enter Book ID to issue:');
+        if (bookId) {
+            await issueBookToMember(bookId, memberId);
+        }
+    } catch (error) {
+        showNotification('Error loading books!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function issueBookToCurrentMember() {
+    if (currentMemberId) {
+        quickIssueTo(currentMemberId);
+        closeModal('memberDetailsModal');
+    }
+}
+
+function exportMembers() {
+    playSound('click');
+    
+    if (!membersData.length) {
+        showNotification('No members to export!', 'error');
+        return;
+    }
+    
+    const exportData = membersData.map(member => ({
+        ID: member.id,
+        Name: member.name,
+        Email: member.email,
+        Phone: member.phone || '',
+        Address: member.address || '',
+        'Membership Type': member.membership_type,
+        'Member Since': formatDate(member.created_at),
+        Status: 'Active'
+    }));
+    
+    exportToCSV(exportData, 'bookvana_members_' + new Date().toISOString().split('T')[0]);
+}
+</script>
+
+<style>
+/* Additional styles for members page */
+.member-row:hover {
+    background: rgba(139, 195, 74, 0.1) !important;
+}
+
+.member-name {
+    font-weight: 600;
+    color: var(--forest-green);
+}
+
+.address-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.membership-badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+}
+
+.membership-badge.regular {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+}
+
+.membership-badge.premium {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.membership-badge.student {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+}
+
+.member-details {
+    background: rgba(139, 195, 74, 0.05);
+    padding: 1.5rem;
+    border-radius: 15px;
+    border: 1px solid rgba(139, 195, 74, 0.2);
+}
+</style>
+{% endblock %}

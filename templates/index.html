@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}BookVana - Welcome to Forest Library{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">
+            <span class="forest-text">🌲 Welcome to BookVana 🌲</span>
+        </h1>
+        <p class="hero-subtitle">Your Magical Forest Library Management System</p>
+        <div class="hero-description">
+            <p>Discover knowledge among the trees, where books bloom like flowers and wisdom flows like forest streams.</p>
+        </div>
+        <div class="hero-stats">
+            <div class="stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-number" id="totalBooks">Loading...</div>
+                <div class="stat-label">Total Books</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-number" id="totalMembers">Loading...</div>
+                <div class="stat-label">Active Members</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📖</div>
+                <div class="stat-number" id="issuedBooks">Loading...</div>
+                <div class="stat-label">Books Issued</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-number" id="totalFines">₹0</div>
+                <div class="stat-label">Total Fines</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="quick-actions">
+    <h2 class="section-title">🌿 Quick Actions</h2>
+    <div class="action-grid">
+        <div class="action-card" onclick="navigateWithSound('/books')">
+            <div class="action-icon">📚</div>
+            <h3>Manage Books</h3>
+            <p>Add, edit, and organize your forest of knowledge</p>
+            <div class="action-decoration">🌸</div>
+        </div>
+        
+        <div class="action-card" onclick="navigateWithSound('/members')">
+            <div class="action-icon">👥</div>
+            <h3>Manage Members</h3>
+            <p>Handle member registrations and profiles</p>
+            <div class="action-decoration">🦋</div>
+        </div>
+        
+        <div class="action-card" onclick="showQuickIssue()">
+            <div class="action-icon">📖</div>
+            <h3>Issue Book</h3>
+            <p>Quick book issuing for members</p>
+            <div class="action-decoration">🍃</div>
+        </div>
+        
+        <div class="action-card" onclick="showQuickReturn()">
+            <div class="action-icon">📤</div>
+            <h3>Return Book</h3>
+            <p>Process book returns and calculate fines</p>
+            <div class="action-decoration">🌻</div>
+        </div>
+        
+        <div class="action-card" onclick="navigateWithSound('/transactions')">
+            <div class="action-icon">📊</div>
+            <h3>View Reports</h3>
+            <p>Check transaction history and analytics</p>
+            <div class="action-decoration">🦌</div>
+        </div>
+        
+        <div class="action-card" onclick="showSettings()">
+            <div class="action-icon">⚙️</div>
+            <h3>Settings</h3>
+            <p>Configure library settings and preferences</p>
+            <div class="action-decoration">🐿️</div>
+        </div>
+    </div>
+</div>
+
+<div class="recent-activity">
+    <h2 class="section-title">🌲 Recent Activity</h2>
+    <div class="activity-feed" id="activityFeed">
+        <div class="activity-item">
+            <div class="activity-icon">📚</div>
+            <div class="activity-content">
+                <p><strong>New book added:</strong> "The Forest Chronicles"</p>
+                <span class="activity-time">2 hours ago</span>
+            </div>
+        </div>
+        <div class="activity-item">
+            <div class="activity-icon">👤</div>
+            <div class="activity-content">
+                <p><strong>New member registered:</strong> Raj Kumar</p>
+                <span class="activity-time">4 hours ago</span>
+            </div>
+        </div>
+        <div class="activity-item">
+            <div class="activity-icon">📖</div>
+            <div class="activity-content">
+                <p><strong>Book issued:</strong> "Digital Forest: AI & Nature" to Priya Sharma</p>
+                <span class="activity-time">1 day ago</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Issue Modal -->
+<div id="quickIssueModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🌿 Quick Issue Book</h2>
+            <span class="close" onclick="closeModal('quickIssueModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="quickIssueForm">
+                <div class="form-group">
+                    <label>Select Member:</label>
+                    <select id="quickIssueMember" required>
+                        <option value="">Choose a member...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Select Book:</label>
+                    <select id="quickIssueBook" required>
+                        <option value="">Choose a book...</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-book-open"></i> Issue Book
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Return Modal -->
+<div id="quickReturnModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🌿 Quick Return Book</h2>
+            <span class="close" onclick="closeModal('quickReturnModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="quickReturnForm">
+                <div class="form-group">
+                    <label>Select Member:</label>
+                    <select id="quickReturnMember" required>
+                        <option value="">Choose a member...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Select Book:</label>
+                    <select id="quickReturnBook" required>
+                        <option value="">Choose a book...</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-undo"></i> Return Book
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>⚙️ Library Settings</h2>
+            <span class="close" onclick="closeModal('settingsModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="settings-group">
+                <h3>🔊 Sound Settings</h3>
+                <label class="switch">
+                    <input type="checkbox" id="soundToggle" checked>
+                    <span class="slider"></span>
+                    Enable Sound Effects
+                </label>
+            </div>
+            <div class="settings-group">
+                <h3>📅 Loan Period</h3>
+                <input type="number" id="loanPeriod" value="14" min="1" max="30">
+                <span>days</span>
+            </div>
+            <div class="settings-group">
+                <h3>💰 Fine Per Day</h3>
+                <input type="number" id="finePerDay" value="5" min="1" max="100" step="0.5">
+                <span>₹</span>
+            </div>
+            <button onclick="saveSettings()" class="btn-primary">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load dashboard data
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardStats();
+    loadQuickActionData();
+});
+
+async function loadDashboardStats() {
+    try {
+        const [books, members] = await Promise.all([
+            fetch('/api/books').then(r => r.json()),
+            fetch('/api/members').then(r => r.json())
+        ]);
+        
+        document.getElementById('totalBooks').textContent = books.length;
+        document.getElementById('totalMembers').textContent = members.length;
+        
+        // Calculate issued books (books where available < total)
+        const issuedCount = books.reduce((count, book) => {
+            return count + (book.copies_total - book.copies_available);
+        }, 0);
+        document.getElementById('issuedBooks').textContent = issuedCount;
+        
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+async function loadQuickActionData() {
+    try {
+        const [books, members] = await Promise.all([
+            fetch('/api/books').then(r => r.json()),
+            fetch('/api/members').then(r => r.json())
+        ]);
+        
+        // Populate member dropdowns
+        const memberSelects = ['quickIssueMember', 'quickReturnMember'];
+        memberSelects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Choose a member...</option>';
+            members.forEach(member => {
+                select.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+            });
+        });
+        
+        // Populate book dropdowns
+        const availableBooks = books.filter(book => book.copies_available > 0);
+        const issueBookSelect = document.getElementById('quickIssueBook');
+        issueBookSelect.innerHTML = '<option value="">Choose a book...</option>';
+        availableBooks.forEach(book => {
+            issueBookSelect.innerHTML += `<option value="${book.id}">${book.title} by ${book.author}</option>`;
+        });
+        
+        // For return, we'd need to populate with currently issued books
+        const returnBookSelect = document.getElementById('quickReturnBook');
+        returnBookSelect.innerHTML = '<option value="">Choose a book...</option>';
+        books.forEach(book => {
+            if (book.copies_available < book.copies_total) {
+                returnBookSelect.innerHTML += `<option value="${book.id}">${book.title} by ${book.author}</option>`;
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading quick action data:', error);
+    }
+}
+
+function showQuickIssue() {
+    playSound('click');
+    document.getElementById('quickIssueModal').style.display = 'block';
+}
+
+function showQuickReturn() {
+    playSound('click');
+    document.getElementById('quickReturnModal').style.display = 'block';
+}
+
+function showSettings() {
+    playSound('click');
+    document.getElementById('settingsModal').style.display = 'block';
+}
+
+// Handle quick issue form
+document.getElementById('quickIssueForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const memberId = document.getElementById('quickIssueMember').value;
+    const bookId = document.getElementById('quickIssueBook').value;
+    
+    if (!memberId || !bookId) {
+        playSound('error');
+        showNotification('Please select both member and book!', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/issue-book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                member_id: memberId,
+                book_id: bookId
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            playSound('success');
+            showNotification(result.message, 'success');
+            closeModal('quickIssueModal');
+            loadDashboardStats();
+            loadQuickActionData();
+        } else {
+            playSound('error');
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error issuing book!', 'error');
+        console.error('Error:', error);
+    }
+});
+
+// Handle quick return form
+document.getElementById('quickReturnForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const memberId = document.getElementById('quickReturnMember').value;
+    const bookId = document.getElementById('quickReturnBook').value;
+    
+    if (!memberId || !bookId) {
+        playSound('error');
+        showNotification('Please select both member and book!', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/return-book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                member_id: memberId,
+                book_id: bookId
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            playSound('success');
+            showNotification(result.message, 'success');
+            closeModal('quickReturnModal');
+            loadDashboardStats();
+            loadQuickActionData();
+        } else {
+            playSound('error');
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error returning book!', 'error');
+        console.error('Error:', error);
+    }
+});
+
+function saveSettings() {
+    const soundEnabled = document.getElementById('soundToggle').checked;
+    const loanPeriod = document.getElementById('loanPeriod').value;
+    const finePerDay = document.getElementById('finePerDay').value;
+    
+    localStorage.setItem('soundEnabled', soundEnabled);
+    localStorage.setItem('loanPeriod', loanPeriod);
+    localStorage.setItem('finePerDay', finePerDay);
+    
+    playSound('success');
+    showNotification('Settings saved successfully!', 'success');
+    closeModal('settingsModal');
+}
+
+// Load saved settings
+window.addEventListener('load', function() {
+    const soundEnabled = localStorage.getItem('soundEnabled');
+    if (soundEnabled !== null) {
+        document.getElementById('soundToggle').checked = soundEnabled === 'true';
+    }
+    
+    const loanPeriod = localStorage.getItem('loanPeriod');
+    if (loanPeriod) {
+        document.getElementById('loanPeriod').value = loanPeriod;
+    }
+    
+    const finePerDay = localStorage.getItem('finePerDay');
+    if (finePerDay) {
+        document.getElementById('finePerDay').value = finePerDay;
+    }
+});
+</script>
+{% endblock %}

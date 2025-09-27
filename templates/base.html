@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BookVana - Forest Library{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="forest-background">
+        <!-- Animated elements -->
+        <div class="butterfly butterfly-1">🦋</div>
+        <div class="butterfly butterfly-2">🦋</div>
+        <div class="butterfly butterfly-3">🦋</div>
+        
+        <div class="floating-leaf leaf-1">🍃</div>
+        <div class="floating-leaf leaf-2">🍃</div>
+        <div class="floating-leaf leaf-3">🍃</div>
+        <div class="floating-leaf leaf-4">🍃</div>
+        
+        <div class="tree-decoration tree-1">🌲</div>
+        <div class="tree-decoration tree-2">🌳</div>
+        <div class="tree-decoration tree-3">🌲</div>
+        
+        <div class="flower-decoration flower-1">🌸</div>
+        <div class="flower-decoration flower-2">🌺</div>
+        <div class="flower-decoration flower-3">🌻</div>
+        <div class="flower-decoration flower-4">🌷</div>
+        
+        <div class="animal-decoration animal-1">🦝</div>
+        <div class="animal-decoration animal-2">🐿️</div>
+        <div class="animal-decoration animal-3">🦌</div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">📚🌿</span>
+                <span class="logo-text">BookVana</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="{{ url_for('index') }}" class="nav-link">
+                        <i class="fas fa-home"></i> Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('books') }}" class="nav-link">
+                        <i class="fas fa-book"></i> Books
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('members') }}" class="nav-link">
+                        <i class="fas fa-users"></i> Members
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('transactions') }}" class="nav-link">
+                        <i class="fas fa-exchange-alt"></i> Transactions
+                    </a>
+                </li>
+            </ul>
+            <div class="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Made with ❤️ by Saket</p>
+            <div class="footer-icons">
+                🌿 📚 🦋 🌸
+            </div>
+        </div>
+    </footer>
+
+    <!-- Audio elements for sound effects -->
+    <audio id="clickSound" preload="auto">
+        <source src="{{ url_for('static', filename='sounds/click.mp3') }}" type="audio/mpeg">
+    </audio>
+    <audio id="successSound" preload="auto">
+        <source src="{{ url_for('static', filename='sounds/success.mp3') }}" type="audio/mpeg">
+    </audio>
+    <audio id="errorSound" preload="auto">
+        <source src="{{ url_for('static', filename='sounds/error.mp3') }}" type="audio/mpeg">
+    </audio>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

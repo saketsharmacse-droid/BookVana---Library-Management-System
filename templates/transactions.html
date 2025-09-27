@@ -1,0 +1,963 @@
+{% extends "base.html" %}
+
+{% block title %}BookVana - Transactions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📊 Transactions & Reports</h1>
+    <p class="page-subtitle">Track all library activities and generate reports</p>
+</div>
+
+<div class="management-controls">
+    <div class="search-filter-container">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="transactionSearch" placeholder="Search by member name, book title, or transaction ID...">
+        </div>
+        <div class="filter-select">
+            <select id="statusFilter">
+                <option value="">All Transactions</option>
+                <option value="Active">Active</option>
+                <option value="Returned">Returned</option>
+                <option value="Overdue">Overdue</option>
+            </select>
+        </div>
+        <div class="filter-select">
+            <select id="dateFilter">
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+            </select>
+        </div>
+        <button class="btn-secondary" onclick="exportTransactions()">
+            <i class="fas fa-download"></i> Export
+        </button>
+        <button class="btn-secondary" onclick="printReport()">
+            <i class="fas fa-print"></i> Print
+        </button>
+    </div>
+</div>
+
+<div class="transactions-stats">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-number" id="totalTransactions">0</div>
+            <div class="stat-label">Total Transactions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📖</div>
+            <div class="stat-number" id="activeIssues">0</div>
+            <div class="stat-label">Active Issues</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⏰</div>
+            <div class="stat-number" id="overdueCount">0</div>
+            <div class="stat-label">Overdue Books</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-number" id="totalFines">₹0</div>
+            <div class="stat-label">Total Fines</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-number" id="todayIssued">0</div>
+            <div class="stat-label">Issued Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📤</div>
+            <div class="stat-number" id="todayReturned">0</div>
+            <div class="stat-label">Returned Today</div>
+        </div>
+    </div>
+</div>
+
+<div class="quick-actions-row">
+    <button class="btn-primary" onclick="showIssueBookModal()">
+        <i class="fas fa-book-open"></i> Issue Book
+    </button>
+    <button class="btn-primary" onclick="showReturnBookModal()">
+        <i class="fas fa-undo"></i> Return Book
+    </button>
+    <button class="btn-secondary" onclick="showOverdueModal()">
+        <i class="fas fa-exclamation-triangle"></i> View Overdue
+    </button>
+</div>
+
+<div class="transactions-table-container">
+    <table class="data-table" id="transactionsTable">
+        <thead>
+            <tr>
+                <th>Transaction ID</th>
+                <th>Member</th>
+                <th>Book</th>
+                <th>Issue Date</th>
+                <th>Due Date</th>
+                <th>Return Date</th>
+                <th>Fine (₹)</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="transactionsTableBody">
+            <tr>
+                <td colspan="9" class="loading-cell">
+                    <div class="loading-spinner"></div>
+                    Loading transactions...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Issue Book Modal -->
+<div id="issueBookModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📖 Issue Book</h2>
+            <span class="close" onclick="closeModal('issueBookModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="issueBookForm">
+                <div class="form-group">
+                    <label for="issueMember">Select Member *</label>
+                    <select id="issueMember" name="member_id" required>
+                        <option value="">Choose a member...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="issueBook">Select Book *</label>
+                    <select id="issueBook" name="book_id" required>
+                        <option value="">Choose a book...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="issueDate">Issue Date *</label>
+                    <input type="date" id="issueDate" name="issue_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="dueDate">Due Date *</label>
+                    <input type="date" id="dueDate" name="due_date" required>
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-book-open"></i> Issue Book
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('issueBookModal')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Return Book Modal -->
+<div id="returnBookModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📤 Return Book</h2>
+            <span class="close" onclick="closeModal('returnBookModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="returnBookForm">
+                <div class="form-group">
+                    <label for="returnMember">Select Member *</label>
+                    <select id="returnMember" name="member_id" required>
+                        <option value="">Choose a member...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="returnBook">Select Book *</label>
+                    <select id="returnBook" name="book_id" required>
+                        <option value="">Choose a book...</option>
+                    </select>
+                </div>
+                <div class="return-info" id="returnInfo" style="display: none;">
+                    <div class="info-card">
+                        <h4>📋 Return Information</h4>
+                        <div class="info-row">
+                            <span>Issue Date:</span>
+                            <span id="originalIssueDate">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Due Date:</span>
+                            <span id="originalDueDate">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Days Overdue:</span>
+                            <span id="daysOverdue">0</span>
+                        </div>
+                        <div class="info-row fine-row">
+                            <span>Fine Amount:</span>
+                            <span id="calculatedFine">₹0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-undo"></i> Return Book
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('returnBookModal')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Overdue Books Modal -->
+<div id="overdueModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2>⚠️ Overdue Books</h2>
+            <span class="close" onclick="closeModal('overdueModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="overdueList">
+                <!-- Overdue books will be populated here -->
+            </div>
+            <div class="form-buttons">
+                <button class="btn-secondary" onclick="closeModal('overdueModal')">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let transactionsData = [];
+let membersData = [];
+let booksData = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllData();
+    initTransactionManagement();
+    setDefaultDates();
+});
+
+async function loadAllData() {
+    try {
+        const [transactions, members, books] = await Promise.all([
+            loadData('/api/transactions'),
+            loadData('/api/members'),
+            loadData('/api/books')
+        ]);
+        
+        transactionsData = transactions || [];
+        membersData = members || [];
+        booksData = books || [];
+        
+        displayTransactions(transactionsData);
+        updateTransactionStats(transactionsData);
+        populateDropdowns();
+    } catch (error) {
+        showNotification('Error loading data!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function displayTransactions(transactions) {
+    const tableBody = document.getElementById('transactionsTableBody');
+    
+    if (!transactions.length) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="empty-state">
+                    <div class="empty-icon">📊</div>
+                    <p>No transactions found. Issue your first book to get started!</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tableBody.innerHTML = transactions.map(transaction => {
+        const member = membersData.find(m => m.id === transaction.member_id);
+        const book = booksData.find(b => b.id === transaction.book_id);
+        const isOverdue = transaction.status === 'Active' && new Date(transaction.due_date) < new Date();
+        const status = isOverdue ? 'Overdue' : transaction.status;
+        
+        return `
+            <tr class="transaction-row ${status.toLowerCase()}" data-transaction-id="${transaction.id}">
+                <td class="transaction-id">TXN-${transaction.id}</td>
+                <td class="member-name">${member ? member.name : 'Unknown'}</td>
+                <td class="book-title">${book ? book.title : 'Unknown'}</td>
+                <td>${formatDate(transaction.issue_date)}</td>
+                <td class="${isOverdue ? 'overdue-date' : ''}">${formatDate(transaction.due_date)}</td>
+                <td>${transaction.return_date ? formatDate(transaction.return_date) : '-'}</td>
+                <td class="fine-amount">${formatCurrency(transaction.fine_amount || 0)}</td>
+                <td>
+                    <span class="status-badge ${status.toLowerCase()}">
+                        ${status}
+                    </span>
+                </td>
+                <td class="actions">
+                    <button class="btn-icon" onclick="viewTransactionDetails(${transaction.id})" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${transaction.status === 'Active' ? 
+                        `<button class="btn-icon return" onclick="quickReturn(${transaction.id})" title="Return Book">
+                            <i class="fas fa-undo"></i>
+                        </button>` : ''
+                    }
+                    <button class="btn-icon download" onclick="downloadBill(${transaction.id})" title="Download Bill">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateTransactionStats(transactions) {
+    const total = transactions.length;
+    const active = transactions.filter(t => t.status === 'Active').length;
+    const today = new Date().toDateString();
+    const todayIssued = transactions.filter(t => new Date(t.issue_date).toDateString() === today).length;
+    const todayReturned = transactions.filter(t => t.return_date && new Date(t.return_date).toDateString() === today).length;
+    const overdue = transactions.filter(t => t.status === 'Active' && new Date(t.due_date) < new Date()).length;
+    const totalFines = transactions.reduce((sum, t) => sum + (t.fine_amount || 0), 0);
+    
+    document.getElementById('totalTransactions').textContent = total;
+    document.getElementById('activeIssues').textContent = active;
+    document.getElementById('overdueCount').textContent = overdue;
+    document.getElementById('totalFines').textContent = formatCurrency(totalFines);
+    document.getElementById('todayIssued').textContent = todayIssued;
+    document.getElementById('todayReturned').textContent = todayReturned;
+}
+
+function populateDropdowns() {
+    // Populate member dropdowns
+    const memberSelects = ['issueMember', 'returnMember'];
+    memberSelects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Choose a member...</option>';
+        membersData.forEach(member => {
+            select.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+        });
+    });
+    
+    // Populate book dropdown for issuing (only available books)
+    const availableBooks = booksData.filter(book => book.copies_available > 0);
+    const issueBookSelect = document.getElementById('issueBook');
+    issueBookSelect.innerHTML = '<option value="">Choose a book...</option>';
+    availableBooks.forEach(book => {
+        issueBookSelect.innerHTML += `<option value="${book.id}">${book.title} by ${book.author}</option>`;
+    });
+}
+
+function initTransactionManagement() {
+    // Initialize search
+    const searchInput = document.getElementById('transactionSearch');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const filteredTransactions = transactionsData.filter(transaction => {
+            const member = membersData.find(m => m.id === transaction.member_id);
+            const book = booksData.find(b => b.id === transaction.book_id);
+            const transactionId = `TXN-${transaction.id}`;
+            
+            return transactionId.toLowerCase().includes(searchTerm) ||
+                   (member && member.name.toLowerCase().includes(searchTerm)) ||
+                   (book && book.title.toLowerCase().includes(searchTerm));
+        });
+        displayTransactions(filteredTransactions);
+    });
+    
+    // Initialize filters
+    const statusFilter = document.getElementById('statusFilter');
+    statusFilter.addEventListener('change', function() {
+        filterTransactions();
+        playSound('click');
+    });
+    
+    const dateFilter = document.getElementById('dateFilter');
+    dateFilter.addEventListener('change', function() {
+        filterTransactions();
+        playSound('click');
+    });
+    
+    // Form handlers
+    document.getElementById('issueBookForm').addEventListener('submit', handleIssueBook);
+    document.getElementById('returnBookForm').addEventListener('submit', handleReturnBook);
+    
+    // Return member change handler
+    document.getElementById('returnMember').addEventListener('change', handleReturnMemberChange);
+}
+
+function filterTransactions() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    
+    let filteredTransactions = transactionsData;
+    
+    // Status filter
+    if (statusFilter) {
+        if (statusFilter === 'Overdue') {
+            filteredTransactions = filteredTransactions.filter(t => 
+                t.status === 'Active' && new Date(t.due_date) < new Date()
+            );
+        } else {
+            filteredTransactions = filteredTransactions.filter(t => t.status === statusFilter);
+        }
+    }
+    
+    // Date filter
+    if (dateFilter) {
+        const today = new Date();
+        const todayStr = today.toDateString();
+        
+        switch (dateFilter) {
+            case 'today':
+                filteredTransactions = filteredTransactions.filter(t => 
+                    new Date(t.issue_date).toDateString() === todayStr
+                );
+                break;
+            case 'week':
+                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                filteredTransactions = filteredTransactions.filter(t => 
+                    new Date(t.issue_date) >= weekAgo
+                );
+                break;
+            case 'month':
+                const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                filteredTransactions = filteredTransactions.filter(t => 
+                    new Date(t.issue_date) >= monthAgo
+                );
+                break;
+        }
+    }
+    
+    displayTransactions(filteredTransactions);
+}
+
+function setDefaultDates() {
+    const today = new Date().toISOString().split('T')[0];
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14); // 14 days from today
+    
+    document.getElementById('issueDate').value = today;
+    document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
+}
+
+function showIssueBookModal() {
+    playSound('click');
+    document.getElementById('issueBookModal').style.display = 'block';
+}
+
+function showReturnBookModal() {
+    playSound('click');
+    document.getElementById('returnBookModal').style.display = 'block';
+}
+
+async function handleIssueBook(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const issueData = {
+        member_id: formData.get('member_id'),
+        book_id: formData.get('book_id')
+    };
+    
+    if (!issueData.member_id || !issueData.book_id) {
+        playSound('error');
+        showNotification('Please select both member and book!', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/issue-book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(issueData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            playSound('success');
+            showNotification(result.message, 'success');
+            closeModal('issueBookModal');
+            e.target.reset();
+            setDefaultDates();
+            loadAllData();
+        } else {
+            playSound('error');
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error issuing book!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function handleReturnBook(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const returnData = {
+        member_id: formData.get('member_id'),
+        book_id: formData.get('book_id')
+    };
+    
+    if (!returnData.member_id || !returnData.book_id) {
+        playSound('error');
+        showNotification('Please select both member and book!', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/return-book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(returnData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            playSound('success');
+            showNotification(result.message, 'success');
+            closeModal('returnBookModal');
+            e.target.reset();
+            document.getElementById('returnInfo').style.display = 'none';
+            loadAllData();
+        } else {
+            playSound('error');
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error returning book!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function handleReturnMemberChange() {
+    const memberId = document.getElementById('returnMember').value;
+    const returnBookSelect = document.getElementById('returnBook');
+    
+    if (!memberId) {
+        returnBookSelect.innerHTML = '<option value="">Choose a book...</option>';
+        document.getElementById('returnInfo').style.display = 'none';
+        return;
+    }
+    
+    // Find active transactions for this member
+    const activeTransactions = transactionsData.filter(t => 
+        t.member_id == memberId && t.status === 'Active'
+    );
+    
+    returnBookSelect.innerHTML = '<option value="">Choose a book...</option>';
+    activeTransactions.forEach(transaction => {
+        const book = booksData.find(b => b.id === transaction.book_id);
+        if (book) {
+            returnBookSelect.innerHTML += `<option value="${book.id}" data-transaction-id="${transaction.id}">${book.title}</option>`;
+        }
+    });
+    
+    // Add change handler for book selection
+    returnBookSelect.onchange = function() {
+        const bookId = this.value;
+        const selectedOption = this.options[this.selectedIndex];
+        const transactionId = selectedOption.getAttribute('data-transaction-id');
+        
+        if (transactionId) {
+            const transaction = transactionsData.find(t => t.id == transactionId);
+            showReturnInfo(transaction);
+        } else {
+            document.getElementById('returnInfo').style.display = 'none';
+        }
+    };
+}
+
+function showReturnInfo(transaction) {
+    const issueDate = new Date(transaction.issue_date);
+    const dueDate = new Date(transaction.due_date);
+    const today = new Date();
+    
+    const daysOverdue = Math.max(0, Math.floor((today - dueDate) / (1000 * 60 * 60 * 24)));
+    const fineAmount = daysOverdue * 5; // ₹5 per day
+    
+    document.getElementById('originalIssueDate').textContent = formatDate(transaction.issue_date);
+    document.getElementById('originalDueDate').textContent = formatDate(transaction.due_date);
+    document.getElementById('daysOverdue').textContent = daysOverdue;
+    document.getElementById('calculatedFine').textContent = formatCurrency(fineAmount);
+    
+    const fineRow = document.querySelector('.fine-row');
+    fineRow.style.color = fineAmount > 0 ? '#f44336' : '#4caf50';
+    
+    document.getElementById('returnInfo').style.display = 'block';
+}
+
+async function quickReturn(transactionId) {
+    const transaction = transactionsData.find(t => t.id === transactionId);
+    if (!transaction) return;
+    
+    const confirmed = confirm('Are you sure you want to return this book?');
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch('/api/return-book', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                member_id: transaction.member_id,
+                book_id: transaction.book_id
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            playSound('success');
+            showNotification(result.message, 'success');
+            loadAllData();
+        } else {
+            playSound('error');
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error returning book!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function viewTransactionDetails(transactionId) {
+    playSound('click');
+    const transaction = transactionsData.find(t => t.id === transactionId);
+    if (!transaction) return;
+    
+    const member = membersData.find(m => m.id === transaction.member_id);
+    const book = booksData.find(b => b.id === transaction.book_id);
+    
+    alert(`Transaction Details:
+    
+ID: TXN-${transaction.id}
+Member: ${member ? member.name : 'Unknown'}
+Book: ${book ? book.title : 'Unknown'}
+Issue Date: ${formatDate(transaction.issue_date)}
+Due Date: ${formatDate(transaction.due_date)}
+Return Date: ${transaction.return_date ? formatDate(transaction.return_date) : 'Not returned'}
+Fine: ${formatCurrency(transaction.fine_amount || 0)}
+Status: ${transaction.status}`);
+}
+
+async function downloadBill(transactionId) {
+    playSound('click');
+    
+    try {
+        const response = await fetch(`/api/download-bill/${transactionId}`);
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bill_${transactionId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            playSound('success');
+            showNotification('Bill downloaded successfully!', 'success');
+        } else {
+            throw new Error('Failed to download bill');
+        }
+    } catch (error) {
+        playSound('error');
+        showNotification('Error downloading bill!', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function showOverdueModal() {
+    playSound('click');
+    
+    const overdueTransactions = transactionsData.filter(t => 
+        t.status === 'Active' && new Date(t.due_date) < new Date()
+    );
+    
+    const overdueList = document.getElementById('overdueList');
+    
+    if (!overdueTransactions.length) {
+        overdueList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <p>No overdue books! All books are returned on time.</p>
+            </div>
+        `;
+    } else {
+        overdueList.innerHTML = `
+            <div class="overdue-header">
+                <h3>📋 Overdue Books (${overdueTransactions.length})</h3>
+            </div>
+            <div class="overdue-items">
+                ${overdueTransactions.map(transaction => {
+                    const member = membersData.find(m => m.id === transaction.member_id);
+                    const book = booksData.find(b => b.id === transaction.book_id);
+                    const daysOverdue = Math.floor((new Date() - new Date(transaction.due_date)) / (1000 * 60 * 60 * 24));
+                    const fine = daysOverdue * 5;
+                    
+                    return `
+                        <div class="overdue-item">
+                            <div class="overdue-info">
+                                <div class="info-row">
+                                    <strong>📖 Book:</strong> ${book ? book.title : 'Unknown'}
+                                </div>
+                                <div class="info-row">
+                                    <strong>👤 Member:</strong> ${member ? member.name : 'Unknown'}
+                                </div>
+                                <div class="info-row">
+                                    <strong>📅 Due Date:</strong> ${formatDate(transaction.due_date)}
+                                </div>
+                                <div class="info-row overdue-days">
+                                    <strong>⏰ Days Overdue:</strong> ${daysOverdue} days
+                                </div>
+                                <div class="info-row fine-amount">
+                                    <strong>💰 Fine:</strong> ${formatCurrency(fine)}
+                                </div>
+                            </div>
+                            <div class="overdue-actions">
+                                <button class="btn-primary btn-sm" onclick="quickReturn(${transaction.id}); closeModal('overdueModal');">
+                                    Return Book
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+    
+    document.getElementById('overdueModal').style.display = 'block';
+}
+
+function exportTransactions() {
+    playSound('click');
+    
+    if (!transactionsData.length) {
+        showNotification('No transactions to export!', 'error');
+        return;
+    }
+    
+    const exportData = transactionsData.map(transaction => {
+        const member = membersData.find(m => m.id === transaction.member_id);
+        const book = booksData.find(b => b.id === transaction.book_id);
+        const isOverdue = transaction.status === 'Active' && new Date(transaction.due_date) < new Date();
+        
+        return {
+            'Transaction ID': `TXN-${transaction.id}`,
+            'Member': member ? member.name : 'Unknown',
+            'Book': book ? book.title : 'Unknown',
+            'Author': book ? book.author : 'Unknown',
+            'Issue Date': formatDate(transaction.issue_date),
+            'Due Date': formatDate(transaction.due_date),
+            'Return Date': transaction.return_date ? formatDate(transaction.return_date) : '',
+            'Fine Amount': transaction.fine_amount || 0,
+            'Status': isOverdue ? 'Overdue' : transaction.status
+        };
+    });
+    
+    exportToCSV(exportData, 'bookvana_transactions_' + new Date().toISOString().split('T')[0]);
+}
+
+function printReport() {
+    playSound('click');
+    printTable('transactionsTable');
+}
+</script>
+
+<style>
+/* Additional styles for transactions page */
+.quick-actions-row {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.transaction-row.overdue {
+    background: rgba(244, 67, 54, 0.1) !important;
+    border-left: 4px solid #f44336;
+}
+
+.transaction-row.returned {
+    background: rgba(76, 175, 80, 0.05) !important;
+}
+
+.overdue-date {
+    color: #f44336;
+    font-weight: 600;
+}
+
+.transaction-id {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--forest-green);
+}
+
+.fine-amount {
+    font-weight: 600;
+    color: #f44336;
+}
+
+.status-badge.overdue {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.status-badge.returned {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+}
+
+.return-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(139, 195, 74, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(139, 195, 74, 0.3);
+}
+
+.info-card h4 {
+    color: var(--forest-green);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.info-row span:first-child {
+    font-weight: 500;
+    color: var(--leaf-green);
+}
+
+.info-row span:last-child {
+    font-weight: 600;
+    color: var(--forest-green);
+}
+
+.fine-row {
+    border-top: 1px solid rgba(139, 195, 74, 0.3);
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.large-modal .modal-content {
+    max-width: 800px;
+    width: 95%;
+}
+
+.overdue-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(244, 67, 54, 0.3);
+}
+
+.overdue-header h3 {
+    color: #f44336;
+    font-weight: 600;
+}
+
+.overdue-items {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.overdue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: rgba(244, 67, 54, 0.05);
+    border-radius: 15px;
+    border: 1px solid rgba(244, 67, 54, 0.2);
+    border-left: 4px solid #f44336;
+}
+
+.overdue-info {
+    flex: 1;
+}
+
+.overdue-info .info-row {
+    margin-bottom: 0.5rem;
+}
+
+.overdue-days {
+    color: #f44336 !important;
+}
+
+.overdue-actions {
+    margin-left: 1rem;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.btn-icon.return {
+    color: var(--light-green);
+}
+
+.btn-icon.return:hover {
+    background: var(--light-green);
+    color: white;
+}
+
+.btn-icon.download {
+    color: #2196f3;
+}
+
+.btn-icon.download:hover {
+    background: #2196f3;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .quick-actions-row {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .overdue-item {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .overdue-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .btn-sm {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
